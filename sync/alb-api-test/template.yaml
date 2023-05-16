@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  alb-api-test
+
+  Sample SAM Template for alb-api-test
+  
+Parameters:
+  VpcId:
+      Type: AWS::EC2::VPC::Id
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Architectures:
+      - arm64
+
+Resources:
+  ServerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: latency/
+      Handler: server.lambdaHandler
+      Runtime: nodejs18.x
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: alb-api-test
+          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - server.ts
+  
+  ServerFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ServerFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: elasticloadbalancing.amazonaws.com
+
+  ClientFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: latency/
+      Handler: client.lambdaHandler
+      Runtime: nodejs18.x
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: alb-api-test
+          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
+          URL: !GetAtt LoadBalancer.DNSName
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - client.ts
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: application
+      Scheme: internet-facing 
+      IpAddressType: dualstack
+      Subnets: !Ref Subnets      
+      SecurityGroups: [!Ref SecurityGroup]
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: ServerFunctionPermission
+    Properties:
+      TargetType: lambda
+      Targets:
+        - Id: !GetAtt ServerFunction.Arn
+
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+  
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Ref AWS::StackName
+      GroupDescription: Allow http on port 80 and 443
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+
+Outputs:
+  Api:
+    Description: "ALB API URL"
+    Value: !GetAtt LoadBalancer.DNSName
+  ServerFunction:
+    Description: "Server Lambda Function ARN"
+    Value: !GetAtt ServerFunction.Arn
+  ClientFunction:
+    Description: "Client Lambda Function ARN"
+    Value: !GetAtt ClientFunction.Arn
+

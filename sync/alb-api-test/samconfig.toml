@@ -1,0 +1,9 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "alb-api-test"
+resolve_s3 = true
+s3_prefix = "alb-api-test"
+region = "eu-west-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "VpcId=\"vpc-0d64f1047d271001e\" Subnets=\"subnet-082caa86171916a5a,subnet-0f0b9ad255bdb5fd7,subnet-0a040bb76f3ad43ed\""
+image_repositories = []
