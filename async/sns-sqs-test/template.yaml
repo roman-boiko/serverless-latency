@@ -1,31 +1,41 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  furl-api-test
+  sns-sqs-test
 
-  Sample SAM Template for furl-api-test
+  Sample SAM Template for sns-sqs-test
   
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
     Timeout: 30
     MemorySize: 1024
+    Runtime: nodejs18.x
     Architectures:
       - arm64
+    Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: sns-sqs-test
+          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
 
 Resources:
-  ServerFunction:
+  TestTopic:
+    Type: AWS::SNS::Topic
+
+  TestQueue:
+    Type: AWS::SQS::Queue
+
+  ProducerFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: latency/
-      Handler: server.lambdaHandler
-      Runtime: nodejs18.x
+      Handler: producer.lambdaHandler
       Environment:
         Variables:
-          POWERTOOLS_SERVICE_NAME: furl-api-test
-          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
-      FunctionUrlConfig:
-        AuthType: NONE
+          SNS_TOPIC: !Ref TestTopic
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt TestTopic.TopicName
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:
@@ -33,18 +43,24 @@ Resources:
         Target: "es2020"
         Sourcemap: true
         EntryPoints: 
-        - server.ts
-  ClientFunction:
+        - producer.ts
+  ConsumerFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: latency/
-      Handler: client.lambdaHandler
-      Runtime: nodejs18.x
-      Environment:
-        Variables:
-          POWERTOOLS_SERVICE_NAME: furl-api-test
-          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
-          URL: !GetAtt ServerFunctionUrl.FunctionUrl
+      Handler: consumer.lambdaHandler
+      Events:
+        TestTopicEvent:
+          Type: SNS
+          Properties:
+            Topic:  !Ref TestTopic
+            SqsSubscription:
+              BatchSize: 1
+              Enabled: true
+              QueueArn: !GetAtt TestQueue.Arn
+              QueueUrl: !Ref TestQueue
+
+
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:
@@ -52,19 +68,12 @@ Resources:
         Target: "es2020"
         Sourcemap: true
         EntryPoints: 
-        - client.ts
+        - consumer.ts
 
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  Api:
-    Description: "FURL endpoint"
-    Value: !GetAtt ServerFunctionUrl.FunctionUrl
-  ServerFunction:
-    Description: "Server Lambda Function ARN"
-    Value: !GetAtt ServerFunction.Arn
-  ClientFunction:
-    Description: "Client Lambda Function ARN"
-    Value: !GetAtt ClientFunction.Arn
-
+  ProducerFunction:
+    Description: "Producer Lambda Function ARN"
+    Value: !GetAtt ProducerFunction.Arn
+  ConsumerFunction:
+    Description: "Consumer Lambda Function ARN"
+    Value: !GetAtt ConsumerFunction.Arn
