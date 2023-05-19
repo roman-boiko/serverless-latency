@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  sqs-test
+
+  Sample SAM Template for sqs-test
+  
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Runtime: nodejs18.x
+    Architectures:
+      - arm64
+    Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: sqs-test
+          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
+
+Resources:
+  TestQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: test-queue
+  ProducerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: latency/
+      Handler: producer.lambdaHandler
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref TestQueue
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt TestQueue.QueueName
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - producer.ts
+  ConsumerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: latency/
+      Handler: consumer.lambdaHandler
+      Events:
+        TestQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt TestQueue.Arn
+            BatchSize: 1
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - consumer.ts
+
+Outputs:
+  ProducerFunction:
+    Description: "Producer Lambda Function ARN"
+    Value: !GetAtt ProducerFunction.Arn
+  ConsumerFunction:
+    Description: "Consumer Lambda Function ARN"
+    Value: !GetAtt ConsumerFunction.Arn
