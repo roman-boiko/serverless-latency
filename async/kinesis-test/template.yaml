@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  kinesis-test
+
+  Sample SAM Template for kinesis-test
+  
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Runtime: nodejs18.x
+    Architectures:
+      - arm64
+    Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: kinesis-test
+          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
+
+Resources:
+  TestStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      ShardCount: 1
+      StreamModeDetails:
+        StreamMode: PROVISIONED
+  ProducerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: latency/
+      Handler: producer.lambdaHandler
+      Environment:
+        Variables:
+          STREAM_NAME: !Ref TestStream
+      Policies:
+        - KinesisCrudPolicy:
+            StreamName: !Ref TestStream
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - producer.ts
+  ConsumerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: latency/
+      Handler: consumer.lambdaHandler
+      Events:
+        TestStreamEvent:
+          Type: Kinesis
+          Properties:
+            Stream: !GetAtt TestStream.Arn
+            StartingPosition: LATEST
+            BatchSize: 1
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - consumer.ts
+
+Outputs:
+  ProducerFunction:
+    Description: "Producer Lambda Function ARN"
+    Value: !GetAtt ProducerFunction.Arn
+  ConsumerFunction:
+    Description: "Consumer Lambda Function ARN"
+    Value: !GetAtt ConsumerFunction.Arn

@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  eb-test
+
+  Sample SAM Template for eb-test
+  
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Runtime: nodejs18.x
+    Architectures:
+      - arm64
+    Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: eb-test
+          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
+
+Resources:
+  ProducerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: latency/
+      Handler: producer.lambdaHandler
+      Policies:
+        - EventBridgePutEventsPolicy:
+           EventBusName : "default"
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - producer.ts
+  ConsumerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: latency/
+      Handler: consumer.lambdaHandler
+      Events:
+        EventBridgeRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: "default"
+            Pattern:
+              source:
+                - "eb-test"
+              detail-type:
+                - "eb-test"
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints: 
+        - consumer.ts
+
+Outputs:
+  ProducerFunction:
+    Description: "Producer Lambda Function ARN"
+    Value: !GetAtt ProducerFunction.Arn
+  ConsumerFunction:
+    Description: "Consumer Lambda Function ARN"
+    Value: !GetAtt ConsumerFunction.Arn
