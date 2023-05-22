@@ -10,6 +10,11 @@ Globals:
   Function:
     Timeout: 30
     MemorySize: 1024
+    Runtime: nodejs18.x
+    Environment:
+      Variables:
+        POWERTOOLS_SERVICE_NAME: http-api-test
+        POWERTOOLS_METRICS_NAMESPACE: LatencyTest
     Architectures:
       - arm64
 
@@ -19,11 +24,6 @@ Resources:
     Properties:
       CodeUri: latency/
       Handler: server.lambdaHandler
-      Runtime: nodejs18.x
-      Environment:
-        Variables:
-          POWERTOOLS_SERVICE_NAME: http-api-test
-          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
       Events:
         HelloWorld:
           Type: HttpApi
@@ -43,11 +43,8 @@ Resources:
     Properties:
       CodeUri: latency/
       Handler: client.lambdaHandler
-      Runtime: nodejs18.x
       Environment:
         Variables:
-          POWERTOOLS_SERVICE_NAME: http-api-test
-          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
           URL: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/'
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
@@ -63,7 +60,7 @@ Outputs:
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   Api:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+    Description: "API Gateway endpoint URL"
     Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/'
   ServerFunction:
     Description: "Server Lambda Function ARN"

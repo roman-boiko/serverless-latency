@@ -1,4 +1,3 @@
-import { Metrics } from '@aws-lambda-powertools/metrics';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
 const queueUrl = process.env.QUEUE_URL ?? '';

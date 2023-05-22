@@ -1,4 +1,3 @@
-import { Metrics } from '@aws-lambda-powertools/metrics';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 
 const SNS_TOPIC = process.env.SNS_TOPIC ?? '';

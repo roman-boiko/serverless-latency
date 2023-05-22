@@ -7,10 +7,8 @@
   "author": "SAM CLI",
   "license": "MIT",
   "scripts": {
-    "unit": "jest",
     "lint": "eslint '*.ts' --quiet --fix",
-    "compile": "tsc",
-    "test": "npm run compile && npm run unit"
+    "compile": "tsc"
   },
   "dependencies": {
     "@aws-lambda-powertools/metrics": "^1.8.0",

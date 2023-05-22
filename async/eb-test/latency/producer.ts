@@ -1,4 +1,3 @@
-import { Metrics } from '@aws-lambda-powertools/metrics';
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 
 const ebClient = new EventBridgeClient({});

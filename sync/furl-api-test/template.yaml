@@ -10,6 +10,11 @@ Globals:
   Function:
     Timeout: 30
     MemorySize: 1024
+    Runtime: nodejs18.x
+    Environment:
+      Variables:
+        POWERTOOLS_SERVICE_NAME: furl-api-test
+        POWERTOOLS_METRICS_NAMESPACE: LatencyTest
     Architectures:
       - arm64
 
@@ -19,11 +24,6 @@ Resources:
     Properties:
       CodeUri: latency/
       Handler: server.lambdaHandler
-      Runtime: nodejs18.x
-      Environment:
-        Variables:
-          POWERTOOLS_SERVICE_NAME: furl-api-test
-          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
       FunctionUrlConfig:
         AuthType: NONE
     Metadata: # Manage esbuild properties
@@ -39,11 +39,8 @@ Resources:
     Properties:
       CodeUri: latency/
       Handler: client.lambdaHandler
-      Runtime: nodejs18.x
       Environment:
         Variables:
-          POWERTOOLS_SERVICE_NAME: furl-api-test
-          POWERTOOLS_METRICS_NAMESPACE: LatencyTest
           URL: !GetAtt ServerFunctionUrl.FunctionUrl
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
