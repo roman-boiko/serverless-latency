@@ -59,8 +59,6 @@ Resources:
               Enabled: true
               QueueArn: !GetAtt TestQueue.Arn
               QueueUrl: !Ref TestQueue
-
-
     Metadata: # Manage esbuild properties
       BuildMethod: esbuild
       BuildProperties:
